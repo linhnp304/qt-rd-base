@@ -11,7 +11,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        # macos-15 (Sequoia) instead of macos-latest: the latter migrated to
+        # macOS 26 (Tahoe) whose SDK dropped the AGL framework that Qt6's
+        # prebuilt binaries still reference at link time. The resulting binary
+        # still runs on macOS 26.x.
+        os: [ubuntu-latest, windows-latest, macos-15]
 
     runs-on: ${{ matrix.os }}
 
