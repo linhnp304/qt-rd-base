@@ -58,6 +58,8 @@ RadarView::RadarView(QWidget *parent)
 
     m_center = geo::toWorld(m_settings.siteLat, m_settings.siteLng);
     syncZoomSlider();
+
+    m_tiles.openAuto();   // im lặng nếu chưa tải tile — panel vẫn chạy, chỉ nền đen
 }
 
 // ---------------------------------------------------------------- cấu hình --
@@ -138,14 +140,9 @@ void RadarView::paintEvent(QPaintEvent *)
     p.setRenderHint(QPainter::Antialiasing, true);
     p.setRenderHint(QPainter::TextAntialiasing, true);
 
-    // Nền. Khi tắt bản đồ thì để đen tuyệt đối theo yêu cầu; khi bật, hiện tại
-    // mới là nền tạm — độ sáng đã nối sẵn để lắp tile ở giai đoạn sau.
-    if (m_settings.mapVisible) {
-        const int v = 6 + m_settings.mapBrightness * 34 / 100;
-        p.fillRect(rect(), QColor(v * 3 / 4, v, v * 7 / 8));
-    } else {
-        p.fillRect(rect(), Qt::black);
-    }
+    p.fillRect(rect(), Qt::black);   // tắt bản đồ thì nền đen tuyệt đối
+    if (m_settings.mapVisible)
+        drawMap(p);
 
     drawRangeRings(p);
     drawAzimuthLines(p);
@@ -153,10 +150,62 @@ void RadarView::paintEvent(QPaintEvent *)
     drawCursorReadout(p);
 
     if (m_settings.mapVisible) {
-        p.setPen(QColor(120, 140, 120));
-        p.drawText(rect().adjusted(10, 0, -10, -10), Qt::AlignLeft | Qt::AlignBottom,
-                   tr("Nền bản đồ số: chưa lắp (giai đoạn sau)"));
+        // Giấy phép MapTiler/OpenStreetMap bắt buộc ghi nguồn khi hiển thị.
+        p.setPen(QColor(110, 125, 140));
+        p.drawText(rect().adjusted(10, 0, -10, -8), Qt::AlignLeft | Qt::AlignBottom,
+                   m_tiles.isValid()
+                       ? m_tiles.attribution()
+                       : tr("Chưa có dữ liệu bản đồ — chạy tools/download_tiles.py"));
     }
+}
+
+void RadarView::drawMap(QPainter &p)
+{
+    if (!m_tiles.isValid())
+        return;
+
+    // Chọn mức tile theo mật độ điểm ảnh. Tile 512px phủ đúng vùng của tile
+    // 256px cùng chỉ số, nên mức tile thấp hơn mức phóng một bậc. Làm tròn lên
+    // để tile luôn được thu nhỏ khi vẽ — phóng to tile lên sẽ bị mờ.
+    const double scale = kTileSize * std::pow(2.0, m_zoom);
+    const double offset = std::log2(m_tiles.tileSize() / double(kTileSize));
+    const int z = qBound(m_tiles.minZoom(),
+                         int(std::ceil(m_zoom - offset - 1e-6)),
+                         m_tiles.maxZoom());
+
+    const double n = std::pow(2.0, z);
+    const double tilePx = scale / n;          // bề rộng một tile trên màn hình
+    if (tilePx < 1.0)
+        return;
+
+    const QPointF tl = screenToWorld(QPointF(0, 0));
+    const QPointF br = screenToWorld(QPointF(width(), height()));
+
+    const int last = int(n) - 1;
+    const int x0 = qBound(0, int(std::floor(tl.x() * n)), last);
+    const int x1 = qBound(0, int(std::floor(br.x() * n)), last);
+    const int y0 = qBound(0, int(std::floor(tl.y() * n)), last);
+    const int y1 = qBound(0, int(std::floor(br.y() * n)), last);
+
+    // Vẽ theo toạ độ nguyên để các tile kề nhau không hở đường chỉ trắng.
+    p.setRenderHint(QPainter::SmoothPixmapTransform, true);
+    for (int x = x0; x <= x1; ++x) {
+        for (int y = y0; y <= y1; ++y) {
+            const QPixmap pm = m_tiles.tile(z, x, y);
+            if (pm.isNull())
+                continue;
+            const QPointF a = worldToScreen(QPointF(x / n, y / n));
+            const QPointF b = worldToScreen(QPointF((x + 1) / n, (y + 1) / n));
+            const QRect dst(QPoint(int(std::floor(a.x())), int(std::floor(a.y()))),
+                            QPoint(int(std::ceil(b.x())) - 1, int(std::ceil(b.y())) - 1));
+            p.drawPixmap(dst, pm);
+        }
+    }
+
+    // Độ sáng: phủ đen mờ lên trên. 100 = nguyên bản, 0 = tối hẳn.
+    const int dim = (100 - m_settings.mapBrightness) * 255 / 100;
+    if (dim > 0)
+        p.fillRect(rect(), QColor(0, 0, 0, dim));
 }
 
 void RadarView::drawRangeRings(QPainter &p) const

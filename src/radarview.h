@@ -1,6 +1,7 @@
 #pragma once
 
 #include "appsettings.h"
+#include "tilecache.h"
 
 #include <QPointF>
 #include <QWidget>
@@ -47,6 +48,9 @@ private:
     double pixelsPerKm() const;
 
     // --- vẽ ---
+    /// Vẽ nền bản đồ số rồi phủ một lớp tối theo mức độ sáng đã cài.
+    /// Không phải const vì việc đọc tile có cập nhật bộ nhớ đệm.
+    void drawMap(QPainter &p);
     void drawRangeRings(QPainter &p) const;
     void drawAzimuthLines(QPainter &p) const;
     void drawSiteMarker(QPainter &p) const;
@@ -83,4 +87,6 @@ private:
 
     QSlider *m_zoomSlider = nullptr;
     bool     m_updatingSlider = false;
+
+    TileCache m_tiles;
 };

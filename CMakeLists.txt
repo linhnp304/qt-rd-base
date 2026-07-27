@@ -26,6 +26,8 @@ qt_add_executable(cross_p1
     src/settingstab.cpp
     src/settingstab.h
     src/theme.h
+    src/tilecache.cpp
+    src/tilecache.h
 )
 
 target_link_libraries(cross_p1 PRIVATE Qt6::Widgets)
