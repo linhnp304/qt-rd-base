@@ -33,24 +33,44 @@ thì phần mềm vẫn chạy bình thường, chỉ để nền đen kèm dòn
 
 1. Lấy khoá miễn phí tại <https://cloud.maptiler.com/account/keys/>
 2. Lưu vào `docs-local/maptiler.key` (thư mục này đã nằm trong `.gitignore`)
-3. Tải tile — vùng quanh tâm đài mặc định, khoảng 70 MB:
+3. Tải tile — mỗi kiểu nền khoảng 70–180 MB:
 
 ```bash
-python3 tools/download_tiles.py --min-zoom 11 --max-zoom 14 --radius 50
-python3 tools/download_tiles.py --min-zoom 8  --max-zoom 10 --radius 160
+python3 tools/download_tiles.py --style basic-v2-dark --min-zoom 11 --max-zoom 14 --radius 50
+python3 tools/download_tiles.py --style basic-v2-dark --min-zoom 8  --max-zoom 10 --radius 160
 ```
 
-Chạy lại không tải trùng, tile đã có sẵn sẽ bỏ qua. Xem `--help` để đổi style,
-tâm hoặc bán kính.
+Chạy lại không tải trùng, tile đã có sẵn sẽ bỏ qua. Xem `--help` để đổi tâm
+hoặc bán kính.
 
-### Đổi đường dẫn thư mục tile
+### Kiểu nền bản đồ
 
-Sửa trường `tilesDir` trong `mx01.json`:
+Mỗi kiểu nền nằm trong một thư mục con riêng:
+
+```
+maps/mt/basic-v2-dark/tileset.json
+maps/mt/dataviz-dark/tileset.json
+...
+```
+
+Phần mềm **tự quét** các thư mục con này để đổ vào ComboBox chọn kiểu nền
+(cạnh ô "Hiển thị nền bản đồ"). Tải thêm một style là có thêm lựa chọn ngay,
+không phải sửa code:
+
+```bash
+python3 tools/download_tiles.py --style topo-v2-dark --min-zoom 11 --max-zoom 14 --radius 50
+```
+
+Tên hiển thị lấy từ trường `label` trong `tileset.json`; đổi bằng `--label`.
+
+### Đổi đường dẫn thư mục bản đồ
+
+Sửa trường `tilesDir` trong `mx01.json` — đây là thư mục **gốc** chứa các kiểu nền:
 
 | Giá trị | Ý nghĩa |
 |---|---|
-| `maps/mt/tiles` | Mặc định — tính từ thư mục chứa file chạy |
-| `/media/usb/tiles` hoặc `D:/ban-do/tiles` | Đường dẫn tuyệt đối, dùng nguyên |
+| `maps/mt` | Mặc định — tính từ thư mục chứa file chạy |
+| `/media/usb/maps` hoặc `D:/ban-do` | Đường dẫn tuyệt đối, dùng nguyên |
 
 Đường dẫn tương đối còn được dò ngược lên vài cấp thư mục cha, nhờ vậy lúc phát
 triển (file chạy trong `build/`) vẫn thấy `maps/mt/tiles` ở gốc repo.
@@ -64,9 +84,9 @@ MX01_TILES_DIR=/duong/dan/khac ./cross_p1
 Bộ mang đi máy khác nên có bố cục:
 
 ```
-cross_p1          ← file chạy
-mx01.json         ← cấu hình (tự sinh)
-maps/mt/tiles/    ← tile bản đồ
+cross_p1                    ← file chạy
+mx01.json                   ← cấu hình (tự sinh ở lần chạy đầu)
+maps/mt/<kiểu-nền>/         ← tile bản đồ, mỗi kiểu một thư mục
 ```
 
 Dữ liệu bản đồ © MapTiler © OpenStreetMap contributors.

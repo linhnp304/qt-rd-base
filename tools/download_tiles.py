@@ -2,9 +2,13 @@
 """Tải tile bản đồ MapTiler về đĩa để phần mềm chạy offline.
 
 Khoá API đọc từ docs-local/maptiler.key (thư mục này nằm trong .gitignore).
-Tile lưu theo cấu trúc XYZ chuẩn:  <thư mục>/<z>/<x>/<y>.<png|jpg>
+Mỗi kiểu nền vào một thư mục riêng, tile theo cấu trúc XYZ chuẩn:
 
-Chạy lại nhiều lần được: tile đã có sẵn trên đĩa sẽ bị bỏ qua.
+    maps/mt/<style>/<z>/<x>/<y>.<png|jpg>
+    maps/mt/<style>/tileset.json      <- phần mềm quét file này để lập danh sách
+
+Tải thêm một style là phần mềm tự có thêm lựa chọn trong ComboBox, không cần
+sửa code. Chạy lại nhiều lần được: tile đã có sẵn trên đĩa sẽ bị bỏ qua.
 
 Ví dụ:
     python3 tools/download_tiles.py                 # tải theo mặc định
@@ -25,8 +29,25 @@ import urllib.request
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 KEY_FILE = os.path.join(REPO, "docs-local", "maptiler.key")
-# Trùng với giá trị mặc định của tilesDir trong file cấu hình mx01.json.
-OUT_DIR = os.path.join(REPO, "maps", "mt", "tiles")
+# Thư mục gốc chứa bản đồ — trùng với tilesDir trong mx01.json. Mỗi kiểu nền
+# nằm trong một thư mục con mang tên style, phần mềm tự quét ra để đổ ComboBox.
+BASE_DIR = os.path.join(REPO, "maps", "mt")
+
+# Tên hiển thị trong phần mềm. Style không có trong bảng thì lấy luôn mã style.
+LABELS = {
+    "basic-v2-dark":   "Tối cơ bản",
+    "dataviz-dark":    "Tối giản",
+    "streets-v2-dark": "Đường phố",
+    "satellite-v2":    "Ảnh vệ tinh",
+    "hybrid":          "Vệ tinh + nhãn",
+    "topo-v2-dark":    "Địa hình",
+    "outdoor-v2-dark": "Dã ngoại",
+    "toner-v2":        "Đen trắng",
+    "openstreetmap":   "OpenStreetMap",
+    "backdrop":        "Nền nhạt",
+    "winter-v2":       "Mùa đông",
+    "landscape":       "Phong cảnh",
+}
 
 # Tâm đài mặc định — trùng với giá trị mặc định trong phần mềm.
 DEF_LAT, DEF_LNG = 21.028, 105.852
@@ -110,8 +131,15 @@ def main() -> int:
     ap.add_argument("--radius", type=float, default=DEF_RADIUS_KM, help="km")
     ap.add_argument("--min-zoom", type=int, default=DEF_MIN_Z)
     ap.add_argument("--max-zoom", type=int, default=DEF_MAX_Z)
-    ap.add_argument("--out", default=OUT_DIR)
-    ap.add_argument("--workers", type=int, default=6)
+    ap.add_argument("--out", default=BASE_DIR,
+                    help="thư mục gốc chứa bản đồ; tile của mỗi style vào một "
+                         "thư mục con mang tên style")
+    ap.add_argument("--label", default=None,
+                    help="tên hiển thị trong phần mềm (mặc định tra trong bảng)")
+    ap.add_argument("--workers", type=int, default=4,
+                    help="số luồng tải song song (mặc định 4)")
+    ap.add_argument("--delay", type=float, default=0.0,
+                    help="nghỉ bao nhiêu giây sau mỗi tile, để đỡ bị chặn tốc độ")
     ap.add_argument("--probe", action="store_true",
                     help="chỉ tải 1 tile để kiểm tra khoá và cỡ ảnh, rồi thoát")
     ap.add_argument("--dry-run", action="store_true",
@@ -120,6 +148,7 @@ def main() -> int:
 
     key = read_key()
     ext = "jpg" if args.style.startswith("satellite") else "png"
+    dest = os.path.join(args.out, args.style)   # mỗi style một thư mục riêng
 
     # --- thử một tile ở giữa vùng, để biết khoá có chạy và tile bao nhiêu px ---
     zc = args.max_zoom
@@ -164,11 +193,15 @@ def main() -> int:
     done = skipped = failed = 0
     lock = threading.Lock()
     t0 = time.time()
+    throttled = threading.Event()   # máy chủ đã chặn tốc độ (HTTP 429)
+    retry_after = [0]
 
     def work(job):
         nonlocal done, skipped, failed
+        if throttled.is_set():
+            return
         z, x, y = job
-        path = os.path.join(args.out, str(z), str(x), f"{y}.{ext}")
+        path = os.path.join(dest, str(z), str(x), f"{y}.{ext}")
         if os.path.exists(path) and os.path.getsize(path) > 0:
             with lock:
                 skipped += 1
@@ -183,7 +216,17 @@ def main() -> int:
                 os.replace(tmp, path)
                 with lock:
                     done += 1
+                if args.delay:
+                    time.sleep(args.delay)
                 return
+            except urllib.error.HTTPError as e:
+                # 429 = vượt hạn mức. Thử lại chỉ tổ đào sâu thêm, nên dừng cả
+                # lượt và báo rõ phải chờ bao lâu.
+                if e.code == 429:
+                    retry_after[0] = int(e.headers.get("retry-after", 0) or 0)
+                    throttled.set()
+                    return
+                time.sleep(1.5 * (attempt + 1))
             except Exception:                               # noqa: BLE001
                 time.sleep(1.5 * (attempt + 1))
         with lock:
@@ -195,10 +238,22 @@ def main() -> int:
                 print(f"  {i}/{len(jobs)}  tải {done}  bỏ qua {skipped}  "
                       f"lỗi {failed}   ({time.time() - t0:.0f}s)", flush=True)
 
+    if throttled.is_set():
+        wait = retry_after[0]
+        print(f"\n*** MapTiler đã chặn tốc độ (HTTP 429). Đã tải {done} tile "
+              f"trong lượt này. ***")
+        if wait:
+            print(f"    Phải chờ khoảng {wait // 60} phút ({wait}s) rồi chạy "
+                  f"lại lệnh này — tile đã có sẽ được bỏ qua.")
+        else:
+            print("    Chờ một lúc rồi chạy lại lệnh này — tile đã có sẽ được bỏ qua.")
+        print("    Lần sau nên giảm tải: --workers 3 --delay 0.1")
+        return 2
+
     # --- ghi metadata cho phần mềm đọc ---
     # Gộp với lần chạy trước để chạy nhiều lượt (mỗi lượt một dải zoom, bán
     # kính khác nhau) vẫn cho ra dải min/max bao trọn những gì đã có trên đĩa.
-    meta_path = os.path.join(args.out, "tileset.json")
+    meta_path = os.path.join(dest, "tileset.json")
     old = {}
     if os.path.exists(meta_path):
         try:
@@ -217,6 +272,7 @@ def main() -> int:
 
     meta = {
         "style": args.style,
+        "label": args.label or LABELS.get(args.style, args.style),
         "format": ext,
         "tileSize": tile_px,
         "minZoom": min(c["minZoom"] for c in coverage),
@@ -226,12 +282,12 @@ def main() -> int:
         "coverage": coverage,
         "attribution": "© MapTiler © OpenStreetMap contributors",
     }
-    os.makedirs(args.out, exist_ok=True)
-    with open(os.path.join(args.out, "tileset.json"), "w", encoding="utf-8") as f:
+    os.makedirs(dest, exist_ok=True)
+    with open(os.path.join(dest, "tileset.json"), "w", encoding="utf-8") as f:
         json.dump(meta, f, indent=2, ensure_ascii=False)
 
     print(f"\nXong. Tải mới {done}, có sẵn {skipped}, lỗi {failed}.")
-    print(f"Thư mục: {args.out}")
+    print(f"Thư mục: {dest}")
     return 1 if failed else 0
 
 

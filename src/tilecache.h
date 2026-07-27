@@ -4,6 +4,13 @@
 #include <QPixmap>
 #include <QSet>
 #include <QString>
+#include <QVector>
+
+/// Một kiểu nền bản đồ đã có sẵn trên đĩa.
+struct TileSetInfo {
+    QString id;      ///< tên thư mục con, cũng là mã style của MapTiler
+    QString label;   ///< tên hiển thị cho người dùng
+};
 
 /// Đọc tile bản đồ đã tải sẵn trên đĩa (cấu trúc XYZ: <thư mục>/<z>/<x>/<y>.png)
 /// và giữ lại một ít trong bộ nhớ để khỏi đọc đĩa liên tục khi vẽ.
@@ -15,9 +22,14 @@ class TileCache
 public:
     TileCache();
 
+    /// Liệt kê các kiểu nền có trong thư mục gốc — mỗi thư mục con có
+    /// tileset.json là một kiểu. Nhờ vậy tải thêm style là phần mềm tự có thêm
+    /// lựa chọn, không phải sửa code. Kết quả sắp theo tên hiển thị.
+    static QVector<TileSetInfo> listStyles(const QString &baseDir);
+
     /// Mở một thư mục tile. Trả về false nếu thư mục không có tileset.json —
     /// khi đó directory() vẫn giữ đường dẫn vừa thử, để báo lỗi cho đúng chỗ.
-    /// Đường dẫn lấy từ AppSettings::resolvedTilesDir().
+    /// Đường dẫn lấy từ AppSettings::resolvedStyleDir().
     bool open(const QString &dir);
 
     bool isValid() const { return m_valid; }

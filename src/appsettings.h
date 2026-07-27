@@ -27,18 +27,24 @@ struct AppSettings {
     RingMode    ringMode      = RingMode::R1;
     AzimuthMode azimuthMode   = AzimuthMode::A30;
 
-    /// Thư mục chứa tile bản đồ. Đường dẫn tuyệt đối thì dùng nguyên; tương
-    /// đối thì tính từ thư mục chứa file chạy. Sửa trực tiếp trong file JSON
-    /// khi chuyển máy hoặc để tile ở ổ khác.
-    QString     tilesDir      = QStringLiteral("maps/mt/tiles");
+    /// Thư mục gốc chứa bản đồ; mỗi kiểu nền nằm trong một thư mục con mang
+    /// tên style. Đường dẫn tuyệt đối thì dùng nguyên; tương đối thì tính từ
+    /// thư mục chứa file chạy. Sửa trực tiếp trong JSON khi chuyển máy.
+    QString     tilesDir      = QStringLiteral("maps/mt");
+
+    /// Kiểu nền đang chọn — chính là tên thư mục con trong tilesDir.
+    QString     mapStyle      = QStringLiteral("basic-v2-dark");
 
     /// File cấu hình nằm ngay cạnh file chạy, để cả bộ mang đi máy khác được.
     static QString filePath();
 
-    /// Đường dẫn tuyệt đối tới thư mục tile, đã áp dụng thứ tự ưu tiên:
-    /// biến môi trường MX01_TILES_DIR > trường tilesDir. Thư mục trả về có
-    /// thể chưa tồn tại — nơi gọi tự xử lý.
+    /// Đường dẫn tuyệt đối tới thư mục gốc chứa bản đồ, đã áp dụng thứ tự ưu
+    /// tiên: biến môi trường MX01_TILES_DIR > trường tilesDir. Thư mục trả về
+    /// có thể chưa tồn tại — nơi gọi tự xử lý.
     QString resolvedTilesDir() const;
+
+    /// Thư mục của kiểu nền đang chọn: resolvedTilesDir() + "/" + mapStyle.
+    QString resolvedStyleDir() const;
 
     /// Nạp từ đĩa. Trả về false nếu chưa có file / file hỏng — khi đó
     /// các trường giữ nguyên giá trị mặc định.

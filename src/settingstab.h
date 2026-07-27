@@ -1,10 +1,12 @@
 #pragma once
 
 #include "appsettings.h"
+#include "tilecache.h"
 
 #include <QWidget>
 
 class QCheckBox;
+class QComboBox;
 class QDoubleSpinBox;
 class QPushButton;
 class QRadioButton;
@@ -17,6 +19,10 @@ class SettingsTab : public QWidget
 
 public:
     explicit SettingsTab(QWidget *parent = nullptr);
+
+    /// Đổ danh sách kiểu nền vào ComboBox. Gọi trước setSettings để mục đang
+    /// chọn có chỗ mà hiện.
+    void setAvailableStyles(const QVector<TileSetInfo> &styles);
 
     /// Đổ giá trị vào các ô nhập mà không phát tín hiệu thay đổi.
     void setSettings(const AppSettings &s);
@@ -33,6 +39,7 @@ private:
     bool        m_loading = false;   ///< chặn vòng lặp tín hiệu khi đang nạp
 
     QCheckBox      *m_mapVisible    = nullptr;
+    QComboBox      *m_mapStyle      = nullptr;
     QSlider        *m_brightness    = nullptr;
     QDoubleSpinBox *m_siteLat       = nullptr;
     QDoubleSpinBox *m_siteLng       = nullptr;

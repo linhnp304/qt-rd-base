@@ -47,3 +47,7 @@ docs-local/
 # Tile bản đồ đã tải (hàng chục MB) và file cấu hình sinh lúc chạy
 maps/
 mx01.json
+
+# Python
+__pycache__/
+*.pyc

@@ -6,6 +6,8 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 
+#include <algorithm>
+
 namespace {
 
 /// Giữ khoảng 64 tile 512px trong bộ nhớ (chi phí tính bằng KB).
@@ -26,6 +28,31 @@ quint64 TileCache::packKey(int z, int x, int y)
 {
     return (quint64(z & 0xFF) << 56) | (quint64(x & 0xFFFFFFF) << 28)
          | quint64(y & 0xFFFFFFF);
+}
+
+QVector<TileSetInfo> TileCache::listStyles(const QString &baseDir)
+{
+    QVector<TileSetInfo> out;
+    const QDir base(baseDir);
+    if (!base.exists())
+        return out;
+
+    const QStringList subs = base.entryList(QDir::Dirs | QDir::NoDotAndDotDot,
+                                            QDir::Name);
+    for (const QString &sub : subs) {
+        QFile meta(base.filePath(sub) + QStringLiteral("/tileset.json"));
+        if (!meta.open(QIODevice::ReadOnly))
+            continue;
+        const QJsonObject o = QJsonDocument::fromJson(meta.readAll()).object();
+        if (o.isEmpty())
+            continue;
+        out.push_back({sub, o.value(QStringLiteral("label")).toString(sub)});
+    }
+
+    std::sort(out.begin(), out.end(), [](const TileSetInfo &a, const TileSetInfo &b) {
+        return a.label.localeAwareCompare(b.label) < 0;
+    });
+    return out;
 }
 
 bool TileCache::open(const QString &dir)

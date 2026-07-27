@@ -48,6 +48,22 @@ AzimuthMode azimuthFromString(const QString &s, AzimuthMode fallback)
     return fallback;
 }
 
+/// Thư mục gốc hợp lệ là thư mục có ít nhất một thư mục con chứa tileset.json.
+/// Kiểm tra chặt như vậy để lúc dò ngược lên thư mục cha không vớ phải một
+/// thư mục "maps/mt" rỗng nằm sẵn đâu đó.
+bool looksLikeTileBase(const QString &dir)
+{
+    const QDir d(dir);
+    if (!d.exists())
+        return false;
+    const QStringList subs = d.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+    for (const QString &s : subs) {
+        if (QFileInfo::exists(d.filePath(s) + QStringLiteral("/tileset.json")))
+            return true;
+    }
+    return false;
+}
+
 } // namespace
 
 QString AppSettings::filePath()
@@ -61,8 +77,7 @@ QString AppSettings::resolvedTilesDir() const
     if (!env.isEmpty())
         return QDir::cleanPath(QString::fromLocal8Bit(env));
 
-    const QString want = tilesDir.isEmpty() ? QStringLiteral("maps/mt/tiles")
-                                            : tilesDir;
+    const QString want = tilesDir.isEmpty() ? QStringLiteral("maps/mt") : tilesDir;
     if (QDir::isAbsolutePath(want))
         return QDir::cleanPath(want);
 
@@ -75,10 +90,15 @@ QString AppSettings::resolvedTilesDir() const
                                           + QLatin1Char('/') + want);
         if (firstGuess.isEmpty())
             firstGuess = p;
-        if (QFileInfo::exists(p + QStringLiteral("/tileset.json")))
+        if (looksLikeTileBase(p))
             return p;
     }
     return firstGuess;   // không thấy — trả vị trí chuẩn để báo lỗi cho đúng chỗ
+}
+
+QString AppSettings::resolvedStyleDir() const
+{
+    return QDir::cleanPath(resolvedTilesDir() + QLatin1Char('/') + mapStyle);
 }
 
 bool AppSettings::load()
@@ -102,6 +122,13 @@ bool AppSettings::load()
     azimuthMode   = azimuthFromString(o.value(QStringLiteral("azimuthMode")).toString(),
                                       azimuthMode);
     tilesDir      = o.value(QStringLiteral("tilesDir")).toString(tilesDir);
+    mapStyle      = o.value(QStringLiteral("mapStyle")).toString(mapStyle);
+
+    // Chuyển đổi từ bố cục cũ (một bộ tile duy nhất ở maps/mt/tiles) sang bố
+    // cục nhiều kiểu nền (maps/mt/<style>/). Chỉ đụng đúng giá trị mặc định cũ
+    // mà phần mềm từng ghi ra, không động vào đường dẫn người dùng tự đặt.
+    if (tilesDir == QLatin1String("maps/mt/tiles"))
+        tilesDir = QStringLiteral("maps/mt");
 
     // Chặn giá trị vô lý từ file bị sửa tay.
     mapBrightness = qBound(0, mapBrightness, 100);
@@ -125,6 +152,7 @@ bool AppSettings::save() const
     o[QStringLiteral("ringMode")]      = ringToString(ringMode);
     o[QStringLiteral("azimuthMode")]   = azimuthToString(azimuthMode);
     o[QStringLiteral("tilesDir")]      = tilesDir;
+    o[QStringLiteral("mapStyle")]      = mapStyle;
 
     QSaveFile f(path);
     if (!f.open(QIODevice::WriteOnly))

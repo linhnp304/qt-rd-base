@@ -2,6 +2,7 @@
 
 #include <QButtonGroup>
 #include <QCheckBox>
+#include <QComboBox>
 #include <QDoubleSpinBox>
 #include <QFormLayout>
 #include <QGroupBox>
@@ -24,8 +25,16 @@ SettingsTab::SettingsTab(QWidget *parent)
     auto *mapForm = new QFormLayout(mapBox);
     mapForm->setLabelAlignment(Qt::AlignLeft);
 
+    // CheckBox ẩn/hiện và ComboBox chọn kiểu nền nằm cùng một hàng.
     m_mapVisible = new QCheckBox(tr("Hiển thị nền bản đồ"), mapBox);
-    mapForm->addRow(m_mapVisible);
+    m_mapStyle = new QComboBox(mapBox);
+    m_mapStyle->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
+    m_mapStyle->setMinimumContentsLength(12);
+
+    auto *mapRow = new QHBoxLayout;
+    mapRow->addWidget(m_mapVisible, 0);
+    mapRow->addWidget(m_mapStyle, 1);
+    mapForm->addRow(mapRow);
 
     m_brightness = new QSlider(Qt::Horizontal, mapBox);
     m_brightness->setRange(0, 100);
@@ -105,7 +114,11 @@ SettingsTab::SettingsTab(QWidget *parent)
             [brightValue](int v) { brightValue->setText(QString::number(v)); });
 
     connect(m_mapVisible, &QCheckBox::toggled, this, &SettingsTab::emitChange);
+    connect(m_mapStyle, &QComboBox::currentIndexChanged, this, &SettingsTab::emitChange);
     connect(m_brightness, &QSlider::valueChanged, this, &SettingsTab::emitChange);
+
+    // Kiểu nền chỉ có nghĩa khi đang bật hiển thị bản đồ.
+    connect(m_mapVisible, &QCheckBox::toggled, m_mapStyle, &QWidget::setEnabled);
     connect(m_maxRange, &QDoubleSpinBox::valueChanged, this, &SettingsTab::emitChange);
 
     for (auto *b : {m_ring5, m_ring1, m_ring05, m_ringOff,
@@ -118,10 +131,36 @@ SettingsTab::SettingsTab(QWidget *parent)
     setSettings(m_settings);
 }
 
+void SettingsTab::setAvailableStyles(const QVector<TileSetInfo> &styles)
+{
+    m_loading = true;
+    const QString keep = m_mapStyle->currentData().toString();
+
+    m_mapStyle->clear();
+    for (const TileSetInfo &s : styles)
+        m_mapStyle->addItem(s.label, s.id);
+
+    if (styles.isEmpty()) {
+        m_mapStyle->addItem(tr("(chưa tải bản đồ)"), QString());
+        m_mapStyle->setEnabled(false);
+    }
+    const int i = m_mapStyle->findData(keep);
+    if (i >= 0)
+        m_mapStyle->setCurrentIndex(i);
+
+    m_loading = false;
+}
+
 void SettingsTab::setSettings(const AppSettings &s)
 {
     m_loading = true;
     m_settings = s;
+
+    const int styleIndex = m_mapStyle->findData(s.mapStyle);
+    if (styleIndex >= 0)
+        m_mapStyle->setCurrentIndex(styleIndex);
+    m_mapStyle->setEnabled(s.mapVisible && m_mapStyle->count() > 0
+                           && !m_mapStyle->itemData(0).toString().isEmpty());
 
     m_mapVisible->setChecked(s.mapVisible);
     m_brightness->setValue(s.mapBrightness);
@@ -152,6 +191,8 @@ void SettingsTab::emitChange()
 
     m_settings.mapVisible    = m_mapVisible->isChecked();
     m_settings.mapBrightness = m_brightness->value();
+    if (const QString id = m_mapStyle->currentData().toString(); !id.isEmpty())
+        m_settings.mapStyle = id;
     m_settings.maxRangeKm    = m_maxRange->value();
 
     if (m_ring5->isChecked())        m_settings.ringMode = RingMode::R5;

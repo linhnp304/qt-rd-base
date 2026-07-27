@@ -70,9 +70,9 @@ void RadarView::setSettings(const AppSettings &s)
 
     m_settings = s;
 
-    // Mở lại bộ tile khi đường dẫn đổi (hoặc lần đầu). Mở hỏng cũng không sao —
-    // panel vẫn chạy với nền đen và hiện dòng nhắc.
-    const QString dir = s.resolvedTilesDir();
+    // Mở lại bộ tile khi đổi kiểu nền hoặc đổi đường dẫn (và ở lần đầu). Mở
+    // hỏng cũng không sao — panel vẫn chạy với nền đen và hiện dòng nhắc.
+    const QString dir = s.resolvedStyleDir();
     if (dir != m_tiles.directory() || !m_tiles.isValid())
         m_tiles.open(dir);
 

@@ -2,6 +2,7 @@
 
 #include "radarview.h"
 #include "settingstab.h"
+#include "tilecache.h"
 
 #include <QApplication>
 #include <QDateTime>
@@ -15,6 +16,8 @@
 #include <QTabWidget>
 #include <QTimer>
 #include <QVBoxLayout>
+
+#include <algorithm>
 
 namespace {
 
@@ -51,11 +54,7 @@ MainWindow::MainWindow(QWidget *parent)
 {
     setWindowTitle(QStringLiteral("MX01"));
 
-    // Chưa có file cấu hình thì ghi ngay bản mặc định, để người dùng có sẵn
-    // file mà sửa (nhất là trường tilesDir) thay vì phải đổi gì đó trong giao
-    // diện mới thấy file xuất hiện.
-    if (!m_settings.load())
-        m_settings.save();
+    m_settings.load();   // giữ mặc định nếu chưa có file
 
     m_radar = new RadarView(this);
 
@@ -101,6 +100,23 @@ MainWindow::MainWindow(QWidget *parent)
     new QShortcut(QKeySequence(Qt::Key_F11), this, [this] {
         isFullScreen() ? showMaximized() : showFullScreen();
     });
+
+    // Danh sách kiểu nền lấy từ chính các thư mục có trên đĩa. Nếu kiểu đang
+    // lưu trong cấu hình không còn (đổi máy, xoá bớt bản đồ) thì lùi về kiểu
+    // đầu tiên còn dùng được, để ComboBox không trỏ vào chỗ trống.
+    const QVector<TileSetInfo> styles =
+        TileCache::listStyles(m_settings.resolvedTilesDir());
+    m_settingsTab->setAvailableStyles(styles);
+
+    const bool stillThere = std::any_of(styles.cbegin(), styles.cend(),
+        [this](const TileSetInfo &s) { return s.id == m_settings.mapStyle; });
+    if (!stillThere && !styles.isEmpty())
+        m_settings.mapStyle = styles.first().id;
+
+    // Ghi lại ngay lúc khởi động: file luôn tồn tại để người dùng có cái mà
+    // sửa (tilesDir, mapStyle), và phản ánh đúng những gì phần mềm đang dùng
+    // sau khi đã chuyển đổi bố cục cũ hay lùi về kiểu nền còn dùng được.
+    m_settings.save();
 
     // Trước khi rê chuột, thanh trạng thái hiện luôn toạ độ tâm đài.
     m_settingsTab->setSettings(m_settings);
