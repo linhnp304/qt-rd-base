@@ -1,0 +1,50 @@
+#pragma once
+
+#include "appsettings.h"
+
+#include <QWidget>
+
+class QCheckBox;
+class QDoubleSpinBox;
+class QPushButton;
+class QRadioButton;
+class QSlider;
+
+/// Tab "Cài đặt" trong panel 2.1.
+class SettingsTab : public QWidget
+{
+    Q_OBJECT
+
+public:
+    explicit SettingsTab(QWidget *parent = nullptr);
+
+    /// Đổ giá trị vào các ô nhập mà không phát tín hiệu thay đổi.
+    void setSettings(const AppSettings &s);
+
+signals:
+    /// Phát mỗi khi có cài đặt mới cần áp dụng (và lưu xuống JSON).
+    void settingsChanged(const AppSettings &s);
+
+private:
+    /// Gom giá trị hiện trên giao diện vào m_settings rồi phát tín hiệu.
+    void emitChange();
+
+    AppSettings m_settings;
+    bool        m_loading = false;   ///< chặn vòng lặp tín hiệu khi đang nạp
+
+    QCheckBox      *m_mapVisible    = nullptr;
+    QSlider        *m_brightness    = nullptr;
+    QDoubleSpinBox *m_siteLat       = nullptr;
+    QDoubleSpinBox *m_siteLng       = nullptr;
+    QPushButton    *m_applySite     = nullptr;
+    QDoubleSpinBox *m_maxRange      = nullptr;
+
+    QRadioButton *m_ring5   = nullptr;
+    QRadioButton *m_ring1   = nullptr;
+    QRadioButton *m_ring05  = nullptr;
+    QRadioButton *m_ringOff = nullptr;
+
+    QRadioButton *m_az30  = nullptr;
+    QRadioButton *m_az10  = nullptr;
+    QRadioButton *m_azOff = nullptr;
+};

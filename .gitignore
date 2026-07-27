@@ -34,3 +34,12 @@ Thumbs.db
 
 # Claude Code local settings (per-machine, not shared)
 .claude/settings.local.json
+
+# Local-only design/description notes (not pushed to GitHub)
+docs-local/
+
+# Khoá API / bí mật — không bao giờ đưa lên repo
+*.key
+*.secret
+.env
+.env.*

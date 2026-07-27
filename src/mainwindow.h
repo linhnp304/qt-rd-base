@@ -1,12 +1,12 @@
 #pragma once
 
+#include "appsettings.h"
+
 #include <QMainWindow>
 
-QT_BEGIN_NAMESPACE
-namespace Ui {
-class MainWindow;
-}
-QT_END_NAMESPACE
+class QLabel;
+class RadarView;
+class SettingsTab;
 
 class MainWindow : public QMainWindow
 {
@@ -14,8 +14,18 @@ class MainWindow : public QMainWindow
 
 public:
     explicit MainWindow(QWidget *parent = nullptr);
-    ~MainWindow() override;
 
 private:
-    Ui::MainWindow *ui;
+    QWidget *buildRightColumn();
+    QWidget *buildStatusBar();
+
+    void applySettings(const AppSettings &s);
+
+    AppSettings  m_settings;
+    RadarView   *m_radar       = nullptr;
+    SettingsTab *m_settingsTab = nullptr;
+
+    QLabel *m_timeLabel   = nullptr;
+    QLabel *m_cursorLabel = nullptr;
+    QLabel *m_siteLabel   = nullptr;
 };

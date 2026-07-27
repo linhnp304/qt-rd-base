@@ -16,9 +16,16 @@ qt_standard_project_setup()
 
 qt_add_executable(cross_p1
     src/main.cpp
+    src/appsettings.cpp
+    src/appsettings.h
+    src/geo.h
     src/mainwindow.cpp
     src/mainwindow.h
-    src/mainwindow.ui
+    src/radarview.cpp
+    src/radarview.h
+    src/settingstab.cpp
+    src/settingstab.h
+    src/theme.h
 )
 
 target_link_libraries(cross_p1 PRIVATE Qt6::Widgets)
