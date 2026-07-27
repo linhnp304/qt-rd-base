@@ -49,8 +49,9 @@ private:
 
     // --- vẽ ---
     /// Vẽ nền bản đồ số rồi phủ một lớp tối theo mức độ sáng đã cài.
+    /// Trả về số tile thực sự vẽ được — 0 nghĩa là vùng đang xem chưa tải.
     /// Không phải const vì việc đọc tile có cập nhật bộ nhớ đệm.
-    void drawMap(QPainter &p);
+    int drawMap(QPainter &p);
     void drawRangeRings(QPainter &p) const;
     void drawAzimuthLines(QPainter &p) const;
     void drawSiteMarker(QPainter &p) const;
