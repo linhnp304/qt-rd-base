@@ -17,11 +17,19 @@ cmake --build build --parallel
 
 Chạy binary sinh ra trong thư mục `build/` (ví dụ `build/cross_p1` trên Linux/macOS, `build/Release/cross_p1.exe` trên Windows).
 
+## File cấu hình
+
+`mx01.json` nằm **ngay cạnh file chạy**, sinh ra ở lần chạy đầu. Cả bộ (file
+chạy + cấu hình + bản đồ) mang sang máy khác là chạy được ngay.
+
+> Lúc phát triển, file chạy nằm trong `build/` nên cấu hình cũng ở đó và sẽ mất
+> khi xoá thư mục `build`. Không sao — thiếu file thì phần mềm dùng giá trị mặc định.
+
 ## Nền bản đồ số
 
 Tile bản đồ **không nằm trong repo** (dung lượng lớn, và khoá API là của riêng
 từng người). Máy mới phải tự tải về trước khi nền bản đồ hiện lên — thiếu tile
-thì phần mềm vẫn chạy bình thường, chỉ để nền đen.
+thì phần mềm vẫn chạy bình thường, chỉ để nền đen kèm dòng nhắc.
 
 1. Lấy khoá miễn phí tại <https://cloud.maptiler.com/account/keys/>
 2. Lưu vào `docs-local/maptiler.key` (thư mục này đã nằm trong `.gitignore`)
@@ -33,8 +41,33 @@ python3 tools/download_tiles.py --min-zoom 8  --max-zoom 10 --radius 160
 ```
 
 Chạy lại không tải trùng, tile đã có sẵn sẽ bỏ qua. Xem `--help` để đổi style,
-tâm hoặc bán kính. Phần mềm tự dò thư mục `docs-local/tiles`; đặt chỗ khác thì
-trỏ bằng biến môi trường `MX01_TILES_DIR`.
+tâm hoặc bán kính.
+
+### Đổi đường dẫn thư mục tile
+
+Sửa trường `tilesDir` trong `mx01.json`:
+
+| Giá trị | Ý nghĩa |
+|---|---|
+| `maps/mt/tiles` | Mặc định — tính từ thư mục chứa file chạy |
+| `/media/usb/tiles` hoặc `D:/ban-do/tiles` | Đường dẫn tuyệt đối, dùng nguyên |
+
+Đường dẫn tương đối còn được dò ngược lên vài cấp thư mục cha, nhờ vậy lúc phát
+triển (file chạy trong `build/`) vẫn thấy `maps/mt/tiles` ở gốc repo.
+
+Biến môi trường `MX01_TILES_DIR` đè lên tất cả — tiện khi thử nhanh:
+
+```bash
+MX01_TILES_DIR=/duong/dan/khac ./cross_p1
+```
+
+Bộ mang đi máy khác nên có bố cục:
+
+```
+cross_p1          ← file chạy
+mx01.json         ← cấu hình (tự sinh)
+maps/mt/tiles/    ← tile bản đồ
+```
 
 Dữ liệu bản đồ © MapTiler © OpenStreetMap contributors.
 

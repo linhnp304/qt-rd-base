@@ -15,12 +15,9 @@ class TileCache
 public:
     TileCache();
 
-    /// Dò tìm và mở bộ tile. Thứ tự ưu tiên: biến môi trường MX01_TILES_DIR,
-    /// rồi các vị trí quen thuộc quanh thư mục chạy và thư mục làm việc.
-    /// Trả về false nếu chưa tải tile về.
-    bool openAuto();
-
-    /// Mở một thư mục tile cụ thể.
+    /// Mở một thư mục tile. Trả về false nếu thư mục không có tileset.json —
+    /// khi đó directory() vẫn giữ đường dẫn vừa thử, để báo lỗi cho đúng chỗ.
+    /// Đường dẫn lấy từ AppSettings::resolvedTilesDir().
     bool open(const QString &dir);
 
     bool isValid() const { return m_valid; }

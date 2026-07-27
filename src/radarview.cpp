@@ -58,8 +58,6 @@ RadarView::RadarView(QWidget *parent)
 
     m_center = geo::toWorld(m_settings.siteLat, m_settings.siteLng);
     syncZoomSlider();
-
-    m_tiles.openAuto();   // im lặng nếu chưa tải tile — panel vẫn chạy, chỉ nền đen
 }
 
 // ---------------------------------------------------------------- cấu hình --
@@ -71,6 +69,12 @@ void RadarView::setSettings(const AppSettings &s)
     const bool rangeChanged = !qFuzzyCompare(s.maxRangeKm, m_settings.maxRangeKm);
 
     m_settings = s;
+
+    // Mở lại bộ tile khi đường dẫn đổi (hoặc lần đầu). Mở hỏng cũng không sao —
+    // panel vẫn chạy với nền đen và hiện dòng nhắc.
+    const QString dir = s.resolvedTilesDir();
+    if (dir != m_tiles.directory() || !m_tiles.isValid())
+        m_tiles.open(dir);
 
     if (siteMoved || rangeChanged)
         resetView();

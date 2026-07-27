@@ -50,7 +50,12 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
     setWindowTitle(QStringLiteral("MX01"));
-    m_settings.load();   // giữ mặc định nếu chưa có file cấu hình
+
+    // Chưa có file cấu hình thì ghi ngay bản mặc định, để người dùng có sẵn
+    // file mà sửa (nhất là trường tilesDir) thay vì phải đổi gì đó trong giao
+    // diện mới thấy file xuất hiện.
+    if (!m_settings.load())
+        m_settings.save();
 
     m_radar = new RadarView(this);
 

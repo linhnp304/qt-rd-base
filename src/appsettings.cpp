@@ -1,12 +1,12 @@
 #include "appsettings.h"
 
+#include <QCoreApplication>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QSaveFile>
-#include <QStandardPaths>
 
 namespace {
 
@@ -52,9 +52,33 @@ AzimuthMode azimuthFromString(const QString &s, AzimuthMode fallback)
 
 QString AppSettings::filePath()
 {
-    const QString dir =
-        QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
-    return dir + QStringLiteral("/mx01.json");
+    return QCoreApplication::applicationDirPath() + QStringLiteral("/mx01.json");
+}
+
+QString AppSettings::resolvedTilesDir() const
+{
+    const QByteArray env = qgetenv("MX01_TILES_DIR");
+    if (!env.isEmpty())
+        return QDir::cleanPath(QString::fromLocal8Bit(env));
+
+    const QString want = tilesDir.isEmpty() ? QStringLiteral("maps/mt/tiles")
+                                            : tilesDir;
+    if (QDir::isAbsolutePath(want))
+        return QDir::cleanPath(want);
+
+    // Đường dẫn tương đối tính từ thư mục chứa file chạy. Lúc phát triển, file
+    // chạy nằm trong build/ còn tile để ở gốc repo, nên dò thêm vài cấp cha.
+    const QString appDir = QCoreApplication::applicationDirPath();
+    QString firstGuess;
+    for (const char *up : {"", "/..", "/../..", "/../../.."}) {
+        const QString p = QDir::cleanPath(appDir + QLatin1String(up)
+                                          + QLatin1Char('/') + want);
+        if (firstGuess.isEmpty())
+            firstGuess = p;
+        if (QFileInfo::exists(p + QStringLiteral("/tileset.json")))
+            return p;
+    }
+    return firstGuess;   // không thấy — trả vị trí chuẩn để báo lỗi cho đúng chỗ
 }
 
 bool AppSettings::load()
@@ -77,6 +101,7 @@ bool AppSettings::load()
                                    ringMode);
     azimuthMode   = azimuthFromString(o.value(QStringLiteral("azimuthMode")).toString(),
                                       azimuthMode);
+    tilesDir      = o.value(QStringLiteral("tilesDir")).toString(tilesDir);
 
     // Chặn giá trị vô lý từ file bị sửa tay.
     mapBrightness = qBound(0, mapBrightness, 100);
@@ -99,6 +124,7 @@ bool AppSettings::save() const
     o[QStringLiteral("maxRangeKm")]    = maxRangeKm;
     o[QStringLiteral("ringMode")]      = ringToString(ringMode);
     o[QStringLiteral("azimuthMode")]   = azimuthToString(azimuthMode);
+    o[QStringLiteral("tilesDir")]      = tilesDir;
 
     QSaveFile f(path);
     if (!f.open(QIODevice::WriteOnly))

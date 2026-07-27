@@ -28,35 +28,14 @@ quint64 TileCache::packKey(int z, int x, int y)
          | quint64(y & 0xFFFFFFF);
 }
 
-bool TileCache::openAuto()
-{
-    const QByteArray env = qgetenv("MX01_TILES_DIR");
-    if (!env.isEmpty() && open(QString::fromLocal8Bit(env)))
-        return true;
-
-    const QString appDir = QCoreApplication::applicationDirPath();
-    const QStringList candidates = {
-        QDir::currentPath() + QStringLiteral("/docs-local/tiles"),
-        appDir + QStringLiteral("/tiles"),
-        appDir + QStringLiteral("/../docs-local/tiles"),
-        appDir + QStringLiteral("/../../docs-local/tiles"),
-        appDir + QStringLiteral("/../../../docs-local/tiles"),
-    };
-    for (const QString &c : candidates) {
-        if (open(c))
-            return true;
-    }
-    return false;
-}
-
 bool TileCache::open(const QString &dir)
 {
     m_valid = false;
     m_cache.clear();
     m_missing.clear();
+    m_dir = QDir::cleanPath(dir);   // giữ cả khi mở hỏng, để nơi gọi so sánh được
 
-    const QString root = QDir::cleanPath(dir);
-    QFile meta(root + QStringLiteral("/tileset.json"));
+    QFile meta(m_dir + QStringLiteral("/tileset.json"));
     if (!meta.open(QIODevice::ReadOnly))
         return false;
 
@@ -64,7 +43,6 @@ bool TileCache::open(const QString &dir)
     if (o.isEmpty())
         return false;
 
-    m_dir         = root;
     m_format      = o.value(QStringLiteral("format")).toString(QStringLiteral("png"));
     m_tileSize    = o.value(QStringLiteral("tileSize")).toInt(256);
     m_minZoom     = o.value(QStringLiteral("minZoom")).toInt(0);

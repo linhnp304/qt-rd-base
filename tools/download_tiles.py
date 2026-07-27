@@ -25,7 +25,8 @@ import urllib.request
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 KEY_FILE = os.path.join(REPO, "docs-local", "maptiler.key")
-OUT_DIR = os.path.join(REPO, "docs-local", "tiles")
+# Trùng với giá trị mặc định của tilesDir trong file cấu hình mx01.json.
+OUT_DIR = os.path.join(REPO, "maps", "mt", "tiles")
 
 # Tâm đài mặc định — trùng với giá trị mặc định trong phần mềm.
 DEF_LAT, DEF_LNG = 21.028, 105.852

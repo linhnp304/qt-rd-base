@@ -27,8 +27,18 @@ struct AppSettings {
     RingMode    ringMode      = RingMode::R1;
     AzimuthMode azimuthMode   = AzimuthMode::A30;
 
-    /// Đường dẫn file cấu hình (theo chuẩn từng hệ điều hành).
+    /// Thư mục chứa tile bản đồ. Đường dẫn tuyệt đối thì dùng nguyên; tương
+    /// đối thì tính từ thư mục chứa file chạy. Sửa trực tiếp trong file JSON
+    /// khi chuyển máy hoặc để tile ở ổ khác.
+    QString     tilesDir      = QStringLiteral("maps/mt/tiles");
+
+    /// File cấu hình nằm ngay cạnh file chạy, để cả bộ mang đi máy khác được.
     static QString filePath();
+
+    /// Đường dẫn tuyệt đối tới thư mục tile, đã áp dụng thứ tự ưu tiên:
+    /// biến môi trường MX01_TILES_DIR > trường tilesDir. Thư mục trả về có
+    /// thể chưa tồn tại — nơi gọi tự xử lý.
+    QString resolvedTilesDir() const;
 
     /// Nạp từ đĩa. Trả về false nếu chưa có file / file hỏng — khi đó
     /// các trường giữ nguyên giá trị mặc định.
