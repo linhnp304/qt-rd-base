@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 
+#include "appinfo.h"
 #include "radarview.h"
 #include "settingstab.h"
 #include "tilecache.h"
@@ -52,7 +53,7 @@ QString formatLatLng(double lat, double lng)
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
-    setWindowTitle(QStringLiteral("AR01.01"));
+    setWindowTitle(appinfo::displayName());
 
     m_settings.load();   // giữ mặc định nếu chưa có file
 

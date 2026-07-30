@@ -1,5 +1,7 @@
 #include "appsettings.h"
 
+#include "appinfo.h"
+
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
@@ -96,12 +98,13 @@ QString resolveDataDir(const QString &want, bool (*looksRight)(const QString &))
 
 QString AppSettings::filePath()
 {
-    return QCoreApplication::applicationDirPath() + QStringLiteral("/mx01.json");
+    return QCoreApplication::applicationDirPath() + QLatin1Char('/')
+         + appinfo::configFileName();
 }
 
 QString AppSettings::resolvedTilesDir() const
 {
-    const QByteArray env = qgetenv("MX01_TILES_DIR");
+    const QByteArray env = qgetenv(appinfo::tilesDirEnvVar());
     if (!env.isEmpty())
         return QDir::cleanPath(QString::fromLocal8Bit(env));
 

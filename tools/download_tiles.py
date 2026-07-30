@@ -21,6 +21,7 @@ import concurrent.futures as futures
 import json
 import math
 import os
+import re
 import sys
 import threading
 import time
@@ -29,9 +30,19 @@ import urllib.request
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 KEY_FILE = os.path.join(REPO, "docs-local", "maptiler.key")
-# Thư mục gốc chứa bản đồ — trùng với tilesDir trong mx01.json. Mỗi kiểu nền
+# Thư mục gốc chứa bản đồ — trùng với tilesDir trong file cấu hình. Mỗi kiểu nền
 # nằm trong một thư mục con mang tên style, phần mềm tự quét ra để đổ ComboBox.
 BASE_DIR = os.path.join(REPO, "maps", "mt")
+
+# Tên dự án, chỉ dùng để xưng danh với máy chủ MapTiler. Lấy từ project(...)
+# trong CMakeLists.txt để tách dự án mới không phải sửa thêm chỗ này.
+def _app_name() -> str:
+    try:
+        with open(os.path.join(REPO, "CMakeLists.txt"), encoding="utf-8") as f:
+            m = re.search(r"^project\(([A-Za-z0-9_-]+)", f.read(), re.MULTILINE)
+            return m.group(1) if m else "qt-app"
+    except OSError:
+        return "qt-app"
 
 # Tên hiển thị trong phần mềm. Style không có trong bảng thì lấy luôn mã style.
 LABELS = {
@@ -54,7 +65,7 @@ DEF_LAT, DEF_LNG = 21.028, 105.852
 DEF_RADIUS_KM = 50.0
 DEF_MIN_Z, DEF_MAX_Z = 10, 14
 
-USER_AGENT = "MX01-tile-downloader/1.0 (+offline radar display)"
+USER_AGENT = f"{_app_name()}-tile-downloader/1.0 (+offline radar display)"
 
 
 def read_key() -> str:

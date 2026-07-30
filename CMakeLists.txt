@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.16)
 
+# Tên dự án cũng là tên file chạy. Tách dự án mới thì đổi đúng dòng này và
+# src/appinfo.h. Chỉ dùng chữ không dấu — đây là tên file thật trên đĩa; tên
+# hiển thị (có dấu được) nằm trong src/appinfo.h.
 project(cross_p1 VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -9,13 +12,21 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
+# Mã nguồn viết bằng UTF-8 và có chuỗi tiếng Việt. MSVC mặc định đọc theo bảng
+# mã của Windows nên chữ có dấu sẽ thành ký tự lạ; /utf-8 bắt nó đọc cho đúng.
+# GCC và Clang mặc định đã là UTF-8.
+if(MSVC)
+    add_compile_options(/utf-8)
+endif()
+
 find_package(QT NAMES Qt6 REQUIRED COMPONENTS Widgets)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
 
 qt_standard_project_setup()
 
-qt_add_executable(cross_p1
+qt_add_executable(${PROJECT_NAME}
     src/main.cpp
+    src/appinfo.h
     src/appsettings.cpp
     src/appsettings.h
     src/geo.h
@@ -36,15 +47,15 @@ qt_add_executable(cross_p1
     src/vectormap.h
 )
 
-target_link_libraries(cross_p1 PRIVATE Qt6::Widgets)
+target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::Widgets)
 
-set_target_properties(cross_p1 PROPERTIES
+set_target_properties(${PROJECT_NAME} PROPERTIES
     WIN32_EXECUTABLE ON
     MACOSX_BUNDLE ON
 )
 
 include(GNUInstallDirs)
-install(TARGETS cross_p1
+install(TARGETS ${PROJECT_NAME}
     BUNDLE DESTINATION .
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )

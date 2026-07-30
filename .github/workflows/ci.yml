@@ -29,6 +29,13 @@ jobs:
           version: '6.8.*'
           cache: true
 
+      # Tên file chạy lấy thẳng từ project(...) trong CMakeLists.txt, để dùng
+      # bộ code này làm gốc cho dự án khác thì không phải sửa cả workflow.
+      - name: Read app name
+        id: app
+        shell: bash
+        run: sed -n 's/^project(\([A-Za-z0-9_-]*\).*/name=\1/p' CMakeLists.txt >> "$GITHUB_OUTPUT"
+
       - name: Configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 
@@ -38,9 +45,9 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: cross_p1-${{ matrix.os }}
+          name: ${{ steps.app.outputs.name }}-${{ matrix.os }}
           path: |
-            build/**/cross_p1
-            build/**/cross_p1.exe
-            build/**/cross_p1.app
+            build/**/${{ steps.app.outputs.name }}
+            build/**/${{ steps.app.outputs.name }}.exe
+            build/**/${{ steps.app.outputs.name }}.app
           if-no-files-found: ignore

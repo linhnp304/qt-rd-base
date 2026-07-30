@@ -96,7 +96,8 @@ Sửa trường `tilesDir` trong `mx01.json` — đây là thư mục **gốc** 
 Đường dẫn tương đối còn được dò ngược lên vài cấp thư mục cha, nhờ vậy lúc phát
 triển (file chạy trong `build/`) vẫn thấy `maps/mt/tiles` ở gốc repo.
 
-Biến môi trường `MX01_TILES_DIR` đè lên tất cả — tiện khi thử nhanh:
+Biến môi trường (tên khai trong [src/appinfo.h](src/appinfo.h), hiện là
+`MX01_TILES_DIR`) đè lên tất cả — tiện khi thử nhanh:
 
 ```bash
 MX01_TILES_DIR=/duong/dan/khac ./cross_p1
@@ -112,6 +113,39 @@ maps/tc/                    ← shapefile của lớp bản đồ TC
 ```
 
 Dữ liệu bản đồ © MapTiler © OpenStreetMap contributors.
+
+## Tách dự án mới từ bộ này
+
+Bộ code này dùng làm gốc cho phần mềm khác có cùng bố cục được. Mọi cái tên đã
+gom về **hai chỗ**, sửa xong là chạy — không phải đi tìm tên rải rác trong code:
+
+| Sửa ở đâu | Sửa cái gì |
+|---|---|
+| [CMakeLists.txt](CMakeLists.txt), dòng `project(...)` | Tên file chạy. **Chữ không dấu**, vì là tên file thật trên đĩa. |
+| [src/appinfo.h](src/appinfo.h) | Tên hiển thị, tên đơn vị, tên file cấu hình, biến môi trường. |
+
+Tên hiển thị **viết tiếng Việt có dấu được** — nó chỉ ra tiêu đề cửa sổ và tiêu
+đề hộp thoại. Hai thứ này độc lập nhau:
+
+```
+project(x123)                                     ← file chạy: x123 / x123.exe
+appinfo::displayName() = "Ra đa tầm gần X123"     ← chữ trên thanh tiêu đề
+appinfo::configFileName() = "x123.json"           ← file cấu hình, không dấu
+```
+
+CI và `tools/download_tiles.py` tự đọc tên từ `project(...)` nên không phải sửa.
+
+Việc còn lại sau khi đổi tên:
+
+1. Sửa dòng tiêu đề và phần mô tả trong README này.
+2. `git remote set-url origin <repo mới>` — nhớ làm ngay, kẻo push nhầm về repo gốc.
+3. Chép `maps/` sang (không nằm trong repo): tile MapTiler tải lại bằng script,
+   riêng `maps/tc` là dữ liệu riêng, phải chép tay.
+4. Xoá `build/` cũ nếu có, rồi cấu hình lại từ đầu.
+
+> **MSVC:** mã nguồn là UTF-8 không BOM, nên CMakeLists đã bật sẵn `/utf-8`.
+> Bỏ cờ này thì chữ tiếng Việt trên giao diện sẽ thành ký tự lạ khi build bằng
+> Visual Studio. GCC và Clang thì mặc định đã đúng.
 
 ## CI
 

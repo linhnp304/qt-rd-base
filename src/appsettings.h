@@ -58,8 +58,8 @@ struct AppSettings {
     static QString filePath();
 
     /// Đường dẫn tuyệt đối tới thư mục gốc chứa bản đồ, đã áp dụng thứ tự ưu
-    /// tiên: biến môi trường MX01_TILES_DIR > trường tilesDir. Thư mục trả về
-    /// có thể chưa tồn tại — nơi gọi tự xử lý.
+    /// tiên: biến môi trường (appinfo::tilesDirEnvVar) > trường tilesDir.
+    /// Thư mục trả về có thể chưa tồn tại — nơi gọi tự xử lý.
     QString resolvedTilesDir() const;
 
     /// Thư mục của kiểu nền đang chọn: resolvedTilesDir() + "/" + mapStyle.
