@@ -52,7 +52,7 @@ QString formatLatLng(double lat, double lng)
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
-    setWindowTitle(QStringLiteral("MX01"));
+    setWindowTitle(QStringLiteral("AR01.01"));
 
     m_settings.load();   // giữ mặc định nếu chưa có file
 
@@ -104,13 +104,21 @@ MainWindow::MainWindow(QWidget *parent)
     // Danh sách kiểu nền lấy từ chính các thư mục có trên đĩa. Nếu kiểu đang
     // lưu trong cấu hình không còn (đổi máy, xoá bớt bản đồ) thì lùi về kiểu
     // đầu tiên còn dùng được, để ComboBox không trỏ vào chỗ trống.
-    const QVector<TileSetInfo> styles =
-        TileCache::listStyles(m_settings.resolvedTilesDir());
+    QVector<TileSetInfo> styles = TileCache::listStyles(m_settings.resolvedTilesDir());
+
+    // Tiền tố nguồn để phân biệt với lớp bản đồ TC tự dựng. Thêm ở đây chứ
+    // không sửa nhãn trong tileset.json, để tải lại tile là không mất tiền tố.
+    for (TileSetInfo &s : styles)
+        s.label = tr("MT - %1").arg(s.label);
+
+    // Lớp bản đồ TC luôn có trong danh sách, kể cả khi chưa có dữ liệu — chọn
+    // vào sẽ thấy dòng nhắc chỉ đúng thư mục còn thiếu.
+    styles.push_back({QString::fromLatin1(kTcStyleId), tr("TC")});
     m_settingsTab->setAvailableStyles(styles);
 
     const bool stillThere = std::any_of(styles.cbegin(), styles.cend(),
         [this](const TileSetInfo &s) { return s.id == m_settings.mapStyle; });
-    if (!stillThere && !styles.isEmpty())
+    if (!stillThere)
         m_settings.mapStyle = styles.first().id;
 
     // Ghi lại ngay lúc khởi động: file luôn tồn tại để người dùng có cái mà

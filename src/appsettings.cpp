@@ -64,6 +64,34 @@ bool looksLikeTileBase(const QString &dir)
     return false;
 }
 
+/// Thư mục bản đồ TC hợp lệ là thư mục có lớp nền tỉnh/thành phố.
+bool looksLikeVectorDir(const QString &dir)
+{
+    return QFileInfo::exists(QDir(dir).filePath(QStringLiteral("VNM_adm1.shp")));
+}
+
+/// Đường dẫn tuyệt đối thì dùng nguyên; tương đối thì tính từ thư mục chứa file
+/// chạy. Lúc phát triển, file chạy nằm trong build/ còn dữ liệu để ở gốc repo,
+/// nên dò thêm vài cấp cha. Không thấy chỗ nào hợp lệ thì trả về vị trí chuẩn
+/// (ngay cạnh file chạy) để thông báo lỗi chỉ đúng nơi cần đặt dữ liệu.
+QString resolveDataDir(const QString &want, bool (*looksRight)(const QString &))
+{
+    if (QDir::isAbsolutePath(want))
+        return QDir::cleanPath(want);
+
+    const QString appDir = QCoreApplication::applicationDirPath();
+    QString firstGuess;
+    for (const char *up : {"", "/..", "/../..", "/../../.."}) {
+        const QString p = QDir::cleanPath(appDir + QLatin1String(up)
+                                          + QLatin1Char('/') + want);
+        if (firstGuess.isEmpty())
+            firstGuess = p;
+        if (looksRight(p))
+            return p;
+    }
+    return firstGuess;
+}
+
 } // namespace
 
 QString AppSettings::filePath()
@@ -78,27 +106,18 @@ QString AppSettings::resolvedTilesDir() const
         return QDir::cleanPath(QString::fromLocal8Bit(env));
 
     const QString want = tilesDir.isEmpty() ? QStringLiteral("maps/mt") : tilesDir;
-    if (QDir::isAbsolutePath(want))
-        return QDir::cleanPath(want);
-
-    // Đường dẫn tương đối tính từ thư mục chứa file chạy. Lúc phát triển, file
-    // chạy nằm trong build/ còn tile để ở gốc repo, nên dò thêm vài cấp cha.
-    const QString appDir = QCoreApplication::applicationDirPath();
-    QString firstGuess;
-    for (const char *up : {"", "/..", "/../..", "/../../.."}) {
-        const QString p = QDir::cleanPath(appDir + QLatin1String(up)
-                                          + QLatin1Char('/') + want);
-        if (firstGuess.isEmpty())
-            firstGuess = p;
-        if (looksLikeTileBase(p))
-            return p;
-    }
-    return firstGuess;   // không thấy — trả vị trí chuẩn để báo lỗi cho đúng chỗ
+    return resolveDataDir(want, looksLikeTileBase);
 }
 
 QString AppSettings::resolvedStyleDir() const
 {
     return QDir::cleanPath(resolvedTilesDir() + QLatin1Char('/') + mapStyle);
+}
+
+QString AppSettings::resolvedVectorDir() const
+{
+    const QString want = vectorDir.isEmpty() ? QStringLiteral("maps/tc") : vectorDir;
+    return resolveDataDir(want, looksLikeVectorDir);
 }
 
 bool AppSettings::load()
@@ -123,6 +142,12 @@ bool AppSettings::load()
                                       azimuthMode);
     tilesDir      = o.value(QStringLiteral("tilesDir")).toString(tilesDir);
     mapStyle      = o.value(QStringLiteral("mapStyle")).toString(mapStyle);
+    vectorDir     = o.value(QStringLiteral("vectorDir")).toString(vectorDir);
+    tcAirRoutes   = o.value(QStringLiteral("tcAirRoutes")).toBool(tcAirRoutes);
+    tcAirports    = o.value(QStringLiteral("tcAirports")).toBool(tcAirports);
+    tcRivers      = o.value(QStringLiteral("tcRivers")).toBool(tcRivers);
+    tcPlaceNames  = o.value(QStringLiteral("tcPlaceNames")).toBool(tcPlaceNames);
+    tcProvinces   = o.value(QStringLiteral("tcProvinces")).toBool(tcProvinces);
 
     // Chuyển đổi từ bố cục cũ (một bộ tile duy nhất ở maps/mt/tiles) sang bố
     // cục nhiều kiểu nền (maps/mt/<style>/). Chỉ đụng đúng giá trị mặc định cũ
@@ -153,6 +178,12 @@ bool AppSettings::save() const
     o[QStringLiteral("azimuthMode")]   = azimuthToString(azimuthMode);
     o[QStringLiteral("tilesDir")]      = tilesDir;
     o[QStringLiteral("mapStyle")]      = mapStyle;
+    o[QStringLiteral("vectorDir")]     = vectorDir;
+    o[QStringLiteral("tcAirRoutes")]   = tcAirRoutes;
+    o[QStringLiteral("tcAirports")]    = tcAirports;
+    o[QStringLiteral("tcRivers")]      = tcRivers;
+    o[QStringLiteral("tcPlaceNames")]  = tcPlaceNames;
+    o[QStringLiteral("tcProvinces")]   = tcProvinces;
 
     QSaveFile f(path);
     if (!f.open(QIODevice::WriteOnly))

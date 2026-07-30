@@ -17,6 +17,10 @@ enum class AzimuthMode {
     A10     // thêm đường mỗi 10 độ
 };
 
+/// Mã kiểu nền của lớp bản đồ TC. Không phải tên thư mục con trong tilesDir như
+/// các kiểu nền MapTiler, mà là giá trị dành riêng để chỉ sang dữ liệu vector.
+inline constexpr char kTcStyleId[] = "tc";
+
 /// Toàn bộ cấu hình người dùng, nạp/lưu ở dạng JSON.
 struct AppSettings {
     bool        mapVisible    = true;
@@ -32,8 +36,23 @@ struct AppSettings {
     /// thư mục chứa file chạy. Sửa trực tiếp trong JSON khi chuyển máy.
     QString     tilesDir      = QStringLiteral("maps/mt");
 
-    /// Kiểu nền đang chọn — chính là tên thư mục con trong tilesDir.
+    /// Kiểu nền đang chọn — tên thư mục con trong tilesDir, hoặc kTcStyleId
+    /// nếu đang dùng lớp bản đồ TC.
     QString     mapStyle      = QStringLiteral("basic-v2-dark");
+
+    /// Thư mục dữ liệu shapefile của lớp bản đồ TC. Quy tắc đường dẫn giống
+    /// tilesDir: tuyệt đối thì dùng nguyên, tương đối thì tính từ file chạy.
+    QString     vectorDir     = QStringLiteral("maps/tc");
+
+    /// Ẩn/hiện từng lớp của kiểu nền TC.
+    bool        tcAirRoutes   = true;
+    bool        tcAirports    = true;
+    bool        tcRivers      = true;
+    bool        tcPlaceNames  = true;
+    bool        tcProvinces   = true;
+
+    /// True khi kiểu nền đang chọn là lớp bản đồ TC (không phải tile MapTiler).
+    bool isTcStyle() const { return mapStyle == QLatin1String(kTcStyleId); }
 
     /// File cấu hình nằm ngay cạnh file chạy, để cả bộ mang đi máy khác được.
     static QString filePath();
@@ -45,6 +64,9 @@ struct AppSettings {
 
     /// Thư mục của kiểu nền đang chọn: resolvedTilesDir() + "/" + mapStyle.
     QString resolvedStyleDir() const;
+
+    /// Đường dẫn tuyệt đối tới thư mục dữ liệu bản đồ TC, dò giống resolvedTilesDir().
+    QString resolvedVectorDir() const;
 
     /// Nạp từ đĩa. Trả về false nếu chưa có file / file hỏng — khi đó
     /// các trường giữ nguyên giá trị mặc định.

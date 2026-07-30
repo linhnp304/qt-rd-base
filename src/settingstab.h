@@ -5,6 +5,8 @@
 
 #include <QWidget>
 
+#include <array>
+
 class QCheckBox;
 class QComboBox;
 class QDoubleSpinBox;
@@ -38,9 +40,22 @@ private:
     AppSettings m_settings;
     bool        m_loading = false;   ///< chặn vòng lặp tín hiệu khi đang nạp
 
+    /// Bật/tắt 5 ô ẩn/hiện lớp — chỉ dùng được với kiểu nền TC.
+    void updateTcEnabled();
+
+    /// Năm ô ẩn/hiện lớp TC, đúng thứ tự hiện trên giao diện.
+    std::array<QCheckBox *, 5> tcBoxes() const;
+
     QCheckBox      *m_mapVisible    = nullptr;
     QComboBox      *m_mapStyle      = nullptr;
     QSlider        *m_brightness    = nullptr;
+
+    QCheckBox *m_tcAirRoutes  = nullptr;
+    QCheckBox *m_tcAirports   = nullptr;
+    QCheckBox *m_tcRivers     = nullptr;
+    QCheckBox *m_tcPlaceNames = nullptr;
+    QCheckBox *m_tcProvinces  = nullptr;
+
     QDoubleSpinBox *m_siteLat       = nullptr;
     QDoubleSpinBox *m_siteLng       = nullptr;
     QPushButton    *m_applySite     = nullptr;

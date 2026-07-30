@@ -1,4 +1,4 @@
-# cross_p1 — MX01
+# cross_p1 — AR01.01
 
 Màn hình trắc thủ ra đa, Qt Widgets đa nền tảng (Ubuntu, Windows, macOS) — một codebase, build & chạy trên cả ba hệ điều hành.
 
@@ -27,9 +27,30 @@ chạy + cấu hình + bản đồ) mang sang máy khác là chạy được nga
 
 ## Nền bản đồ số
 
-Tile bản đồ **không nằm trong repo** (dung lượng lớn, và khoá API là của riêng
-từng người). Máy mới phải tự tải về trước khi nền bản đồ hiện lên — thiếu tile
-thì phần mềm vẫn chạy bình thường, chỉ để nền đen kèm dòng nhắc.
+Có hai nguồn nền bản đồ, chọn bằng ComboBox trong tab **Cài đặt**:
+
+| Mục trong ComboBox | Nguồn | Dữ liệu |
+|---|---|---|
+| `MT - …` | Tile ảnh tải sẵn từ MapTiler | `maps/mt/<kiểu-nền>/` |
+| `TC` | Lớp vector tự dựng từ shapefile | `maps/tc/` |
+
+Cả hai đều **không nằm trong repo** và đều không bắt buộc: thiếu dữ liệu thì
+phần mềm vẫn chạy, chỉ để nền trống kèm dòng nhắc chỉ đúng thư mục còn thiếu.
+
+### Lớp bản đồ TC
+
+Đọc thẳng shapefile (`.shp` + `.dbf` + `.prj`) trong `maps/tc`, không cần thư
+viện ngoài: bờ biển, biên giới, địa giới tỉnh, sông ngòi, đường bay dân dụng,
+sân bay và tên địa danh. Toạ độ trong tệp có thể đang ở phép chiếu Lambert
+Conformal Conic hoặc Transverse Mercator — phần mềm tự đọc `.prj` và quy về
+kinh/vĩ độ.
+
+Năm ô ngay dưới ComboBox cho ẩn/hiện từng lớp; lựa chọn được lưu vào `mx01.json`.
+Đường dẫn dữ liệu nằm ở trường `vectorDir`, quy tắc giống `tilesDir` bên dưới.
+
+### Tile MapTiler
+
+Máy mới phải tự tải về trước khi nền bản đồ hiện lên.
 
 1. Lấy khoá miễn phí tại <https://cloud.maptiler.com/account/keys/>
 2. Lưu vào `docs-local/maptiler.key` (thư mục này đã nằm trong `.gitignore`)
@@ -54,8 +75,8 @@ maps/mt/dataviz-dark/tileset.json
 ```
 
 Phần mềm **tự quét** các thư mục con này để đổ vào ComboBox chọn kiểu nền
-(cạnh ô "Hiển thị nền bản đồ"). Tải thêm một style là có thêm lựa chọn ngay,
-không phải sửa code:
+(cạnh ô "Hiển thị nền bản đồ"), tên hiện ra có thêm tiền tố `MT - `. Tải thêm
+một style là có thêm lựa chọn ngay, không phải sửa code:
 
 ```bash
 python3 tools/download_tiles.py --style topo-v2-dark --min-zoom 11 --max-zoom 14 --radius 50
@@ -86,7 +107,8 @@ Bộ mang đi máy khác nên có bố cục:
 ```
 cross_p1                    ← file chạy
 mx01.json                   ← cấu hình (tự sinh ở lần chạy đầu)
-maps/mt/<kiểu-nền>/         ← tile bản đồ, mỗi kiểu một thư mục
+maps/mt/<kiểu-nền>/         ← tile bản đồ MapTiler, mỗi kiểu một thư mục
+maps/tc/                    ← shapefile của lớp bản đồ TC
 ```
 
 Dữ liệu bản đồ © MapTiler © OpenStreetMap contributors.

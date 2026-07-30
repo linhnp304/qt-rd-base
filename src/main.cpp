@@ -7,9 +7,10 @@ int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
 
-    // Quyết định nơi đặt file cấu hình JSON (QStandardPaths dựa vào các tên này).
+    // Tên hiện trên giao diện (tiêu đề cửa sổ, tiêu đề hộp thoại mặc định).
+    // File chạy và file cấu hình mx01.json vẫn giữ nguyên tên cũ.
     QCoreApplication::setOrganizationName(QStringLiteral("MX"));
-    QCoreApplication::setApplicationName(QStringLiteral("MX01"));
+    QCoreApplication::setApplicationName(QStringLiteral("AR01.01"));
 
     app.setStyle(QStringLiteral("Fusion"));
     app.setStyleSheet(theme::styleSheet());

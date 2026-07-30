@@ -36,6 +36,15 @@ SettingsTab::SettingsTab(QWidget *parent)
     mapRow->addWidget(m_mapStyle, 1);
     mapForm->addRow(mapRow);
 
+    // Ẩn/hiện từng lớp của kiểu nền TC, xếp ngay dưới ComboBox chọn kiểu nền.
+    m_tcAirRoutes  = new QCheckBox(tr("Hiện đường bay dân dụng"), mapBox);
+    m_tcAirports   = new QCheckBox(tr("Hiện sân bay"), mapBox);
+    m_tcRivers     = new QCheckBox(tr("Hiện sông ngòi"), mapBox);
+    m_tcPlaceNames = new QCheckBox(tr("Hiện tên địa danh"), mapBox);
+    m_tcProvinces  = new QCheckBox(tr("Hiện danh giới tỉnh/thành phố"), mapBox);
+    for (auto *b : tcBoxes())
+        mapForm->addRow(b);
+
     m_brightness = new QSlider(Qt::Horizontal, mapBox);
     m_brightness->setRange(0, 100);
     auto *brightValue = new QLabel(mapBox);
@@ -116,9 +125,15 @@ SettingsTab::SettingsTab(QWidget *parent)
     connect(m_mapVisible, &QCheckBox::toggled, this, &SettingsTab::emitChange);
     connect(m_mapStyle, &QComboBox::currentIndexChanged, this, &SettingsTab::emitChange);
     connect(m_brightness, &QSlider::valueChanged, this, &SettingsTab::emitChange);
+    for (auto *b : tcBoxes())
+        connect(b, &QCheckBox::toggled, this, &SettingsTab::emitChange);
 
-    // Kiểu nền chỉ có nghĩa khi đang bật hiển thị bản đồ.
+    // Kiểu nền chỉ có nghĩa khi đang bật hiển thị bản đồ; các ô ẩn/hiện lớp thì
+    // còn phải đúng kiểu nền TC nữa.
     connect(m_mapVisible, &QCheckBox::toggled, m_mapStyle, &QWidget::setEnabled);
+    connect(m_mapVisible, &QCheckBox::toggled, this, &SettingsTab::updateTcEnabled);
+    connect(m_mapStyle, &QComboBox::currentIndexChanged,
+            this, &SettingsTab::updateTcEnabled);
     connect(m_maxRange, &QDoubleSpinBox::valueChanged, this, &SettingsTab::emitChange);
 
     for (auto *b : {m_ring5, m_ring1, m_ring05, m_ringOff,
@@ -129,6 +144,19 @@ SettingsTab::SettingsTab(QWidget *parent)
     connect(m_applySite, &QPushButton::clicked, this, &SettingsTab::emitChange);
 
     setSettings(m_settings);
+}
+
+std::array<QCheckBox *, 5> SettingsTab::tcBoxes() const
+{
+    return {m_tcAirRoutes, m_tcAirports, m_tcRivers, m_tcPlaceNames, m_tcProvinces};
+}
+
+void SettingsTab::updateTcEnabled()
+{
+    const bool tc = m_mapVisible->isChecked()
+                 && m_mapStyle->currentData().toString() == QLatin1String(kTcStyleId);
+    for (auto *b : tcBoxes())
+        b->setEnabled(tc);
 }
 
 void SettingsTab::setAvailableStyles(const QVector<TileSetInfo> &styles)
@@ -149,6 +177,7 @@ void SettingsTab::setAvailableStyles(const QVector<TileSetInfo> &styles)
         m_mapStyle->setCurrentIndex(i);
 
     m_loading = false;
+    updateTcEnabled();
 }
 
 void SettingsTab::setSettings(const AppSettings &s)
@@ -164,6 +193,11 @@ void SettingsTab::setSettings(const AppSettings &s)
 
     m_mapVisible->setChecked(s.mapVisible);
     m_brightness->setValue(s.mapBrightness);
+    m_tcAirRoutes->setChecked(s.tcAirRoutes);
+    m_tcAirports->setChecked(s.tcAirports);
+    m_tcRivers->setChecked(s.tcRivers);
+    m_tcPlaceNames->setChecked(s.tcPlaceNames);
+    m_tcProvinces->setChecked(s.tcProvinces);
     m_siteLat->setValue(s.siteLat);
     m_siteLng->setValue(s.siteLng);
     m_maxRange->setValue(s.maxRangeKm);
@@ -182,6 +216,7 @@ void SettingsTab::setSettings(const AppSettings &s)
     }
 
     m_loading = false;
+    updateTcEnabled();
 }
 
 void SettingsTab::emitChange()
@@ -193,6 +228,11 @@ void SettingsTab::emitChange()
     m_settings.mapBrightness = m_brightness->value();
     if (const QString id = m_mapStyle->currentData().toString(); !id.isEmpty())
         m_settings.mapStyle = id;
+    m_settings.tcAirRoutes   = m_tcAirRoutes->isChecked();
+    m_settings.tcAirports    = m_tcAirports->isChecked();
+    m_settings.tcRivers      = m_tcRivers->isChecked();
+    m_settings.tcPlaceNames  = m_tcPlaceNames->isChecked();
+    m_settings.tcProvinces   = m_tcProvinces->isChecked();
     m_settings.maxRangeKm    = m_maxRange->value();
 
     if (m_ring5->isChecked())        m_settings.ringMode = RingMode::R5;

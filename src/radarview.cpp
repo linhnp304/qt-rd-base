@@ -7,6 +7,7 @@
 #include <QPainterPath>
 #include <QResizeEvent>
 #include <QSlider>
+#include <QTransform>
 #include <QWheelEvent>
 
 #include <cmath>
@@ -24,13 +25,6 @@ constexpr double kMinAzSpacingPx   = 28.0;
 const QColor kGridBright(198, 222, 88);
 const QColor kSiteColor(255, 146, 38);
 const QColor kTextColor(206, 226, 138);
-
-QString formatLatLng(double lat, double lng)
-{
-    return QStringLiteral("%1  %2")
-        .arg(lat, 0, 'f', 6)
-        .arg(lng, 0, 'f', 6);
-}
 
 } // namespace
 
@@ -70,11 +64,19 @@ void RadarView::setSettings(const AppSettings &s)
 
     m_settings = s;
 
-    // Mở lại bộ tile khi đổi kiểu nền hoặc đổi đường dẫn (và ở lần đầu). Mở
+    // Mở lại bộ bản đồ khi đổi kiểu nền hoặc đổi đường dẫn (và ở lần đầu). Mở
     // hỏng cũng không sao — panel vẫn chạy với nền đen và hiện dòng nhắc.
-    const QString dir = s.resolvedStyleDir();
-    if (dir != m_tiles.directory() || !m_tiles.isValid())
-        m_tiles.open(dir);
+    // Dữ liệu chỉ nạp khi kiểu nền đó thực sự được chọn: bộ shapefile của lớp
+    // TC mất vài trăm mili giây để dựng hình, không nên nạp lúc đang dùng tile.
+    if (s.isTcStyle()) {
+        const QString dir = s.resolvedVectorDir();
+        if (dir != m_vector.directory() || !m_vector.isValid())
+            m_vector.load(dir);
+    } else {
+        const QString dir = s.resolvedStyleDir();
+        if (dir != m_tiles.directory() || !m_tiles.isValid())
+            m_tiles.open(dir);
+    }
 
     if (siteMoved || rangeChanged)
         resetView();
@@ -127,6 +129,16 @@ QPointF RadarView::geoToScreen(double lat, double lng) const
     return worldToScreen(geo::toWorld(lat, lng));
 }
 
+QTransform RadarView::worldTransform() const
+{
+    const double scale = kTileSize * std::pow(2.0, m_zoom);
+    QTransform t;
+    t.translate(width() / 2.0, height() / 2.0);
+    t.scale(scale, scale);
+    t.translate(-m_center.x(), -m_center.y());
+    return t;
+}
+
 double RadarView::pixelsPerKm() const
 {
     const double scale = kTileSize * std::pow(2.0, m_zoom);
@@ -145,28 +157,58 @@ void RadarView::paintEvent(QPaintEvent *)
     p.setRenderHint(QPainter::TextAntialiasing, true);
 
     p.fillRect(rect(), Qt::black);   // tắt bản đồ thì nền đen tuyệt đối
-    const int tilesDrawn = m_settings.mapVisible ? drawMap(p) : 0;
+
+    int tilesDrawn = 0;
+    if (m_settings.mapVisible) {
+        if (m_settings.isTcStyle())
+            drawVectorMap(p);
+        else
+            tilesDrawn = drawMap(p);
+    }
 
     drawRangeRings(p);
     drawAzimuthLines(p);
     drawSiteMarker(p);
-    drawCursorReadout(p);
 
     if (m_settings.mapVisible) {
-        QString note;
-        if (!m_tiles.isValid())
-            note = tr("Chưa tải dữ liệu bản đồ — xem README, mục Nền bản đồ số");
-        else if (tilesDrawn == 0)
-            note = tr("Vùng này chưa có dữ liệu bản đồ ở mức phóng hiện tại — "
-                      "thu nhỏ lại, hoặc tải thêm tile cho khu vực");
-        else
-            // Giấy phép MapTiler/OpenStreetMap bắt buộc ghi nguồn khi hiển thị.
-            note = m_tiles.attribution();
-
-        p.setPen(QColor(110, 125, 140));
-        p.drawText(rect().adjusted(10, 0, -10, -8), Qt::AlignLeft | Qt::AlignBottom,
-                   note);
+        const QString note = mapNote(tilesDrawn);
+        if (!note.isEmpty()) {
+            p.setPen(QColor(110, 125, 140));
+            p.drawText(rect().adjusted(10, 0, -10, -8),
+                       Qt::AlignLeft | Qt::AlignBottom, note);
+        }
     }
+}
+
+QString RadarView::mapNote(int tilesDrawn) const
+{
+    if (m_settings.isTcStyle()) {
+        // Dữ liệu của lớp TC là của mình, không phải ghi nguồn như tile MapTiler.
+        if (!m_vector.isValid())
+            return tr("Chưa có dữ liệu bản đồ TC trong %1").arg(m_vector.directory());
+        return {};
+    }
+
+    if (!m_tiles.isValid())
+        return tr("Chưa tải dữ liệu bản đồ — xem README, mục Nền bản đồ số");
+    if (tilesDrawn == 0)
+        return tr("Vùng này chưa có dữ liệu bản đồ ở mức phóng hiện tại — "
+                  "thu nhỏ lại, hoặc tải thêm tile cho khu vực");
+    // Giấy phép MapTiler/OpenStreetMap bắt buộc ghi nguồn khi hiển thị.
+    return m_tiles.attribution();
+}
+
+void RadarView::drawVectorMap(QPainter &p) const
+{
+    VectorMapOptions opt;
+    opt.showAirRoutes  = m_settings.tcAirRoutes;
+    opt.showAirports   = m_settings.tcAirports;
+    opt.showRivers     = m_settings.tcRivers;
+    opt.showPlaceNames = m_settings.tcPlaceNames;
+    opt.showProvinces  = m_settings.tcProvinces;
+    opt.brightness     = m_settings.mapBrightness;
+
+    m_vector.draw(p, rect(), worldTransform(), opt);
 }
 
 int RadarView::drawMap(QPainter &p)
@@ -354,24 +396,6 @@ void RadarView::drawSiteMarker(QPainter &p) const
     p.drawEllipse(c, 1.6, 1.6);
 }
 
-void RadarView::drawCursorReadout(QPainter &p) const
-{
-    if (!m_hasCursor)
-        return;
-
-    double lat = 0.0, lng = 0.0;
-    geo::fromWorld(screenToWorld(m_cursorPos), lat, lng);
-
-    const QString text = formatLatLng(lat, lng);
-    const QRect box(10, 10, 210, 24);
-
-    p.setPen(Qt::NoPen);
-    p.setBrush(QColor(0, 0, 0, 150));
-    p.drawRect(box);
-    p.setPen(kTextColor);
-    p.drawText(box.adjusted(8, 0, -8, 0), Qt::AlignVCenter | Qt::AlignLeft, text);
-}
-
 // ------------------------------------------------------------ tương tác ----
 
 void RadarView::resizeEvent(QResizeEvent *e)
@@ -402,22 +426,19 @@ void RadarView::mousePressEvent(QMouseEvent *e)
 
 void RadarView::mouseMoveEvent(QMouseEvent *e)
 {
-    m_hasCursor = true;
-    m_cursorPos = e->position();
-
     if (m_dragging) {
         const double scale = kTileSize * std::pow(2.0, m_zoom);
         const QPointF delta = e->position() - m_dragLastPos;
         m_dragLastPos = e->position();
         m_center -= QPointF(delta.x() / scale, delta.y() / scale);
         m_center.setY(qBound(0.0, m_center.y(), 1.0));
+        update();   // rê chuột không kéo thì khung nhìn không đổi, khỏi vẽ lại
     }
 
     double lat = 0.0, lng = 0.0;
-    geo::fromWorld(screenToWorld(m_cursorPos), lat, lng);
+    geo::fromWorld(screenToWorld(e->position()), lat, lng);
     emit cursorGeoChanged(lat, lng);
 
-    update();
     QWidget::mouseMoveEvent(e);
 }
 

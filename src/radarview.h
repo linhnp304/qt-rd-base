@@ -2,11 +2,13 @@
 
 #include "appsettings.h"
 #include "tilecache.h"
+#include "vectormap.h"
 
 #include <QPointF>
 #include <QWidget>
 
 class QSlider;
+class QTransform;
 
 /// Panel 1 — màn hình hiển thị chính.
 ///
@@ -44,6 +46,9 @@ private:
     QPointF screenToWorld(const QPointF &p) const;
     QPointF geoToScreen(double lat, double lng) const;
 
+    /// Cùng phép biến đổi world -> widget, dạng ma trận để đưa cho QPainter.
+    QTransform worldTransform() const;
+
     /// Số pixel trên màn hình ứng với 1 km mặt đất, tại vĩ độ tâm đài.
     double pixelsPerKm() const;
 
@@ -52,10 +57,16 @@ private:
     /// Trả về số tile thực sự vẽ được — 0 nghĩa là vùng đang xem chưa tải.
     /// Không phải const vì việc đọc tile có cập nhật bộ nhớ đệm.
     int drawMap(QPainter &p);
+
+    /// Vẽ lớp bản đồ TC (dữ liệu vector trong maps/tc).
+    void drawVectorMap(QPainter &p) const;
+
+    /// Dòng nhắc ở đáy panel: ghi nguồn bản đồ, hoặc báo thiếu dữ liệu.
+    QString mapNote(int tilesDrawn) const;
+
     void drawRangeRings(QPainter &p) const;
     void drawAzimuthLines(QPainter &p) const;
     void drawSiteMarker(QPainter &p) const;
-    void drawCursorReadout(QPainter &p) const;
 
     /// Vẽ một lớp vòng tròn. Bước tính theo đơn vị 0.5 km để so trùng bằng số
     /// nguyên (tránh sai số dấu phẩy động); skipHalfKm = 0 nghĩa là không bỏ
@@ -83,11 +94,9 @@ private:
     bool    m_dragging = false;
     QPointF m_dragLastPos;
 
-    bool    m_hasCursor = false;
-    QPointF m_cursorPos;          ///< vị trí con trỏ trên widget
-
     QSlider *m_zoomSlider = nullptr;
     bool     m_updatingSlider = false;
 
     TileCache m_tiles;
+    VectorMap m_vector;
 };

@@ -34,6 +34,7 @@ Thumbs.db
 
 # Claude Code local settings (per-machine, not shared)
 .claude/settings.local.json
+.claude/settings.local.json.tmp.*
 
 # Local-only design/description notes (not pushed to GitHub)
 docs-local/

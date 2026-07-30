@@ -21,13 +21,19 @@ qt_add_executable(cross_p1
     src/geo.h
     src/mainwindow.cpp
     src/mainwindow.h
+    src/prjprojection.cpp
+    src/prjprojection.h
     src/radarview.cpp
     src/radarview.h
     src/settingstab.cpp
     src/settingstab.h
+    src/shapefile.cpp
+    src/shapefile.h
     src/theme.h
     src/tilecache.cpp
     src/tilecache.h
+    src/vectormap.cpp
+    src/vectormap.h
 )
 
 target_link_libraries(cross_p1 PRIVATE Qt6::Widgets)
